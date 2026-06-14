@@ -1,0 +1,5 @@
+.env
+__pycache__/
+*.pyc
+router_history.db
+.streamlit/
