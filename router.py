@@ -126,7 +126,7 @@ st.markdown("""
 
 # --- Brukergrensesnitt ---
 st.title("🤖 OctaCore AI Trio Router")
-st.subheader("Send én prompt samtidig til Gemini, OpenAI og Anthropic")
+st.subheader("Send én prompt samtidig to Gemini, OpenAI og Anthropic")
 
 # Inputfelter
 with st.container():
@@ -154,4 +154,32 @@ if kjor_knapp:
         st.warning("Vennligst skriv inn en prompt før du kjører.")
     else:
         # Tre kolonner for de tre modellene
-        kol_gemini, kol_openai, kol_anthropic =
+        kol_gemini, kol_openai, kol_anthropic = st.columns(3)
+        
+        # 1. Gemini
+        with kol_gemini:
+            st.markdown('<div class="model-box"><span class="gemini-header">Google Gemini</span><br><small>gemini-2.5-flash</small></div>', unsafe_allow_html=True)
+            with st.spinner("Gemini tenker..."):
+                svar_gemini = generer_gemini(user_prompt, system_prompt)
+                st.markdown(svar_gemini)
+                
+        # 2. OpenAI
+        with kol_openai:
+            st.markdown('<div class="model-box"><span class="openai-header">OpenAI</span><br><small>gpt-4o-mini</small></div>', unsafe_allow_html=True)
+            with st.spinner("OpenAI tenker..."):
+                svar_openai = generer_openai(user_prompt, system_prompt)
+                st.markdown(svar_openai)
+                
+        # 3. Anthropic
+        with kol_anthropic:
+            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-3-5-haiku</small></div>', unsafe_allow_html=True)
+            with st.spinner("Claude tenker..."):
+                svar_anthropic = generer_anthropic(user_prompt, system_prompt)
+                st.markdown(svar_anthropic)
+
+# Statusindikatorer i sidepanelet for å sjekke nøkler
+st.sidebar.title("🔑 API Status")
+st.sidebar.markdown("---")
+st.sidebar.write("Gemini:", "✅ Klar" if client_gemini else "❌ Mangler")
+st.sidebar.write("OpenAI:", "✅ Klar" if client_openai else "❌ Mangler")
+st.sidebar.write("Anthropic:", "✅ Klar" if client_anthropic else "❌ Mangler")
