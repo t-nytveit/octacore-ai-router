@@ -75,7 +75,7 @@ def generer_anthropic(prompt, system_instruks):
         return "Anthropic API-nøkkel mangler eller klienten feilet."
     try:
         kwargs = {
-            "model": "claude-3-5-sonnet-latest",
+            "model": "claude-3-5-sonnet-20241022",
             "max_tokens": 1024,
             "messages": [{"role": "user", "content": prompt}]
         }
@@ -151,7 +151,7 @@ with col_btn1:
 # Generering og visning av resultater
 if kjor_knapp:
     if not user_prompt.strip():
-        st.warning("Vennligst shrink inn en prompt før du kjører.")
+        st.warning("Vennligst skriv inn en prompt før du kjører.")
     else:
         # Tre kolonner for de tre modellene
         kol_gemini, kol_openai, kol_anthropic = st.columns(3)
@@ -172,7 +172,7 @@ if kjor_knapp:
                 
         # 3. Anthropic
         with kol_anthropic:
-            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-3-5-sonnet-latest</small></div>', unsafe_allow_html=True)
+            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-3-5-sonnet</small></div>', unsafe_allow_html=True)
             with st.spinner("Claude tenker..."):
                 svar_anthropic = generer_anthropic(user_prompt, system_prompt)
                 st.markdown(svar_anthropic)
