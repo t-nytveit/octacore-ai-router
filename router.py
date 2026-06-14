@@ -75,7 +75,7 @@ def generer_anthropic(prompt, system_instruks):
         return "Anthropic API-nøkkel mangler eller klienten feilet."
     try:
         kwargs = {
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-sonnet-4-6",  # Oppdatert modellnavn
             "max_tokens": 1024,
             "messages": [{"role": "user", "content": prompt}]
         }
@@ -172,7 +172,7 @@ if kjor_knapp:
                 
         # 3. Anthropic
         with kol_anthropic:
-            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-3-5-sonnet</small></div>', unsafe_allow_html=True)
+            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-sonnet-4-6</small></div>', unsafe_allow_html=True)
             with st.spinner("Claude tenker..."):
                 svar_anthropic = generer_anthropic(user_prompt, system_prompt)
                 st.markdown(svar_anthropic)
