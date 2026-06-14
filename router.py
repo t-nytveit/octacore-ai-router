@@ -75,7 +75,7 @@ def generer_anthropic(prompt, system_instruks):
         return "Anthropic API-nøkkel mangler eller klienten feilet."
     try:
         kwargs = {
-            "model": "claude-3-5-haiku-20241022",
+            "model": "claude-3-5-haiku-latest",
             "max_tokens": 1024,
             "messages": [{"role": "user", "content": prompt}]
         }
@@ -126,7 +126,7 @@ st.markdown("""
 
 # --- Brukergrensesnitt ---
 st.title("🤖 OctaCore AI Trio Router")
-st.subheader("Send én prompt samtidig to Gemini, OpenAI og Anthropic")
+st.subheader("Send én prompt samtidig til Gemini, OpenAI og Anthropic")
 
 # Inputfelter
 with st.container():
