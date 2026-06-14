@@ -1,19 +1,20 @@
 import streamlit as st
 import os
+from PIL import Image
 
-# Sett opp sidetittel og layout aller først
+# 1. Konfigurer siden aller først
 st.set_page_config(
     page_title="OctaCore AI Router",
     page_icon="🤖",
     layout="wide"
 )
 
-# Hent API-nøkler trygt fra Streamlit Secrets
+# 2. Hent API-nøkler trygt fra Streamlit Secrets
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY")
 
-# Initialiserer klienter basert på tilgjengelige nøkler
+# Initialiserer klienter
 client_gemini = None
 client_openai = None
 client_anthropic = None
@@ -75,7 +76,7 @@ def generer_anthropic(prompt, system_instruks):
         return "Anthropic API-nøkkel mangler eller klienten feilet."
     try:
         kwargs = {
-            "model": "claude-sonnet-4-6",  # Oppdatert modellnavn
+            "model": "claude-sonnet-4-6",
             "max_tokens": 1024,
             "messages": [{"role": "user", "content": prompt}]
         }
@@ -87,99 +88,199 @@ def generer_anthropic(prompt, system_instruks):
     except Exception as e:
         return f"Feil under Anthropic-generering: {e}"
 
-# --- Custom Styling (Mørkt OctaCore-tema) ---
+
+# 3. --- AVANSERT OCTACORE STYLING (CSS Injection) ---
+# Vi henter lærteksturen din og bruker den som fast bakgrunn, og lager elegante glasspaneler.
 st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-    .main {
-        background-color: #0d1117;
-        color: #c9d1d9;
+    /* Global skrifttype og bakgrunn med lærtekstur */
+    html, body, [data-testid="stAppViewContainer"] {
+        font-family: 'Montserrat', sans-serif;
+        background-image: url('app/static/Svart lædertekstur med uendelighetssymboler.png');
+        background-size: cover;
+        background-attachment: fixed;
+        color: #e4e6eb;
     }
+    
+    /* Gjør sidepanelet semitransparent og elegant */
+    [data-testid="stSidebar"] {
+        background-color: rgba(10, 12, 16, 0.85) !important;
+        backdrop-filter: blur(12px);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    /* Overskrifter og titler */
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 700 !important;
+        letter-spacing: -0.5px;
+        color: #ffffff !important;
+    }
+    
+    /* Tekstområder (Inputs) */
+    textarea {
+        background-color: rgba(22, 27, 34, 0.7) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        backdrop-filter: blur(4px);
+    }
+    textarea:focus {
+        border-color: #58a6ff !important;
+        box-shadow: 0 0 10px rgba(88, 166, 255, 0.2) !important;
+    }
+    
+    /* Hovedknapp (Fyr løs) - Eksklusiv OctaCore Blå med glød */
     .stButton>button {
-        background-color: #21262d;
-        color: #c9d1d9;
-        border: 1px solid #30363d;
-        border-radius: 6px;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
+        background: linear-gradient(135deg, #1f6feb 0%, #104ba3 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.6rem 2rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(31, 111, 235, 0.3) !important;
     }
     .stButton>button:hover {
-        background-color: #30363d;
-        border-color: #8b949e;
-        color: #ffffff;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(31, 111, 235, 0.5) !important;
+        background: linear-gradient(135deg, #388bfd 0%, #1f6feb 100%) !important;
     }
-    h1, h2, h3 {
-        color: #58a6ff !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .model-box {
-        background-color: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 8px;
+    
+    /* Modellpaneler med Glassmorfisme-effekt og farget topplinje */
+    .glass-card {
+        background: rgba(22, 27, 34, 0.65);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
         padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        transition: transform 0.2s ease;
+    }
+    .glass-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    /* Branding striper for hver modell */
+    .brand-line {
+        height: 4px;
+        width: 40px;
+        border-radius: 2px;
+        margin-bottom: 0.8rem;
+    }
+    .gemini-line { background-color: #4285F4; box-shadow: 0 0 8px #4285F4; }
+    .openai-line { background-color: #10a37f; box-shadow: 0 0 8px #10a37f; }
+    .anthropic-line { background-color: #d97706; box-shadow: 0 0 8px #d97706; }
+    
+    .model-title {
+        font-weight: 600;
+        font-size: 1.15rem;
+        color: #ffffff;
+        margin-bottom: 0.2rem;
+    }
+    .model-sub {
+        font-size: 0.8rem;
+        color: #8b949e;
         margin-bottom: 1rem;
     }
-    .gemini-header { color: #4285F4; font-weight: bold; font-size: 1.2rem; }
-    .openai-header { color: #10a37f; font-weight: bold; font-size: 1.2rem; }
-    .anthropic-header { color: #d97706; font-weight: bold; font-size: 1.2rem; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Brukergrensesnitt ---
-st.title("🤖 OctaCore AI Trio Router")
-st.subheader("Send én prompt samtidig til Gemini, OpenAI og Anthropic")
 
-# Inputfelter
+# 4. --- SIDEBAR (Logo & Status) ---
+with st.sidebar:
+    # Last inn og vis OctaCore-logoen i sidepanelet hvis den eksisterer
+    try:
+        logo_img = Image.open("OctaCore_logo_transparent_white_text.jpg")
+        st.image(logo_img, use_column_width=True)
+    except:
+        st.title("OctaCore AI")
+        
+    st.markdown("<br>", unsafe_allow_html=False)
+    st.markdown("### 🔑 System Status")
+    st.markdown("---")
+    
+    # Mer elegante statusindikatorer
+    st.write("🔹 **Google Gemini:**", "🟢 Aktiv" if client_gemini else "🔴 Utilgjengelig")
+    st.write("🔹 **OpenAI:**", "🟢 Aktiv" if client_openai else "🔴 Utilgjengelig")
+    st.write("🔹 **Anthropic Claude:**", "🟢 Aktiv" if client_anthropic else "🔴 Utilgjengelig")
+
+
+# 5. --- HOVEDSIDE HIERARKI ---
+st.title("OctaCore AI Trio Router")
+st.markdown("<p style='color: #8b949e; font-size: 1.1rem; margin-top: -15px;'>Fler-modell distribusjon for avansert analyse</p>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Inndatafelt i en ren kontainer
 with st.container():
     system_prompt = st.text_area(
-        "Systeminstruksjoner (valgfritt - setter oppførsel for AI-ene):", 
-        placeholder="F.eks. 'Du er en pirkete seniorutvikler som svarer kort.'",
+        "⚙️ Systeminstruksjoner (Valgfritt):", 
+        placeholder="Definer oppførsel, tone eller begrensninger for AI-modellene...",
         key="system_prompt"
     )
     
     user_prompt = st.text_area(
-        "Skriv inn din prompt / oppgave her:", 
-        placeholder="Hva vil du ha svar på fra de tre modellene?",
-        height=150,
+        "💬 Skriv inn din prompt eller oppgave:", 
+        placeholder="Hva ønsker du at OctaCore skal løse for deg i dag?",
+        height=120,
         key="user_prompt"
     )
 
-# Knapperad
+# Sentreknapp og oppsett
 col_btn1, col_btn2 = st.columns([1, 5])
 with col_btn1:
     kjor_knapp = st.button("Fyr løs 🚀", type="primary")
 
-# Generering og visning av resultater
+st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
+
+# 6. --- GENERERING OG GLASSMORFISK VISNING ---
 if kjor_knapp:
     if not user_prompt.strip():
         st.warning("Vennligst skriv inn en prompt før du kjører.")
     else:
-        # Tre kolonner for de tre modellene
+        # Tre kolonner for resultatene
         kol_gemini, kol_openai, kol_anthropic = st.columns(3)
         
-        # 1. Gemini
+        # COLUMN 1: Google Gemini
         with kol_gemini:
-            st.markdown('<div class="model-box"><span class="gemini-header">Google Gemini</span><br><small>gemini-2.5-flash</small></div>', unsafe_allow_html=True)
-            with st.spinner("Gemini tenker..."):
+            st.markdown("""
+                <div class="glass-card">
+                    <div class="brand-line gemini-line"></div>
+                    <div class="model-title">Google Gemini</div>
+                    <div class="model-sub">gemini-2.5-flash</div>
+                </div>
+            """, unsafe_allow_html=True)
+            with st.spinner("Analyserer via Gemini..."):
                 svar_gemini = generer_gemini(user_prompt, system_prompt)
                 st.markdown(svar_gemini)
                 
-        # 2. OpenAI
+        # COLUMN 2: OpenAI
         with kol_openai:
-            st.markdown('<div class="model-box"><span class="openai-header">OpenAI</span><br><small>gpt-4o-mini</small></div>', unsafe_allow_html=True)
-            with st.spinner("OpenAI tenker..."):
+            st.markdown("""
+                <div class="glass-card">
+                    <div class="brand-line openai-line"></div>
+                    <div class="model-title">OpenAI</div>
+                    <div class="model-sub">gpt-4o-mini</div>
+                </div>
+            """, unsafe_allow_html=True)
+            with st.spinner("Analyserer via OpenAI..."):
                 svar_openai = generer_openai(user_prompt, system_prompt)
                 st.markdown(svar_openai)
                 
-        # 3. Anthropic
+        # COLUMN 3: Anthropic Claude
         with kol_anthropic:
-            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-sonnet-4-6</small></div>', unsafe_allow_html=True)
-            with st.spinner("Claude tenker..."):
+            st.markdown("""
+                <div class="glass-card">
+                    <div class="brand-line anthropic-line"></div>
+                    <div class="model-title">Anthropic Claude</div>
+                    <div class="model-sub">claude-sonnet-4-6</div>
+                </div>
+            """, unsafe_allow_html=True)
+            with st.spinner("Analyserer via Claude..."):
                 svar_anthropic = generer_anthropic(user_prompt, system_prompt)
                 st.markdown(svar_anthropic)
-
-# Statusindikatorer i sidepanelet for å sjekke nøkler
-st.sidebar.title("🔑 API Status")
-st.sidebar.markdown("---")
-st.sidebar.write("Gemini:", "✅ Klar" if client_gemini else "❌ Mangler")
-st.sidebar.write("OpenAI:", "✅ Klar" if client_openai else "❌ Mangler")
-st.sidebar.write("Anthropic:", "✅ Klar" if client_anthropic else "❌ Mangler")
