@@ -172,7 +172,7 @@ if kjor_knapp:
                 
         # 3. Anthropic
         with kol_anthropic:
-            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-3-5-haiku</small></div>', unsafe_allow_html=True)
+            st.markdown('<div class="model-box"><span class="anthropic-header">Anthropic Claude</span><br><small>claude-3-5-haiku-latest</small></div>', unsafe_allow_html=True)
             with st.spinner("Claude tenker..."):
                 svar_anthropic = generer_anthropic(user_prompt, system_prompt)
                 st.markdown(svar_anthropic)
