@@ -60,7 +60,6 @@ if bg_base64:
         [data-testid="stSidebar"] {{
             background-color: rgba(15, 18, 23, 0.95) !important;
         }}
-        /* Styling for chat-meldinger for å matche lær-temaet */
         [data-testid="stChatMessage"] {{
             background-color: rgba(22, 27, 34, 0.6) !important;
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -71,15 +70,18 @@ if bg_base64:
         </style>
     """, unsafe_allow_html=True)
 
-# Default systeminstruks (Kombinasjon av egenskapene til Gemini og ChatGPT)
+# EN SPLITTER NY, REFLEKTERT OG MENNESKELIG SYSTEMINSTRUKS (v4.0)
 DEFAULT_SYSTEM = (
-    "Du er OctaCore AI, en eksklusiv og avansert AI-assistent utviklet av OctaCore. "
-    "Svarene dine skal kombinere den analytiske presisjonen og strukturen fra ChatGPT, "
-    "med den dype kontekstforståelsen, flyten og personlige finessen til Gemini. "
-    "Fremstå profesjonell, skarp og direkte, uten unødvendig fylltekst."
+    "Du er OctaCore AI, en eksklusiv, dypt intelligent og varm AI-assistent utviklet av OctaCore. "
+    "Svarene dine skal ALDRI oppleves som enkle, mekaniske robotsvar. "
+    "Du skal skrive med en naturlig, reflektert og engasjerende menneskelig tone – akkurat som en dyktig rådgiver og samtalepartner. "
+    "Vis situasjonsforståelse og empati der det er naturlig. Når du løser oppgaver eller svarer på spørsmål, "
+    "skal du ikke bare spytte ut rådata, men forklare tankegangen din, drøfte nyanser og gi helhetlige, "
+    "velformulerte svar med god språklig flyt på feilfri norsk. Kombiner den strukturerte dybden fra ChatGPT "
+    "med den levende og emosjonelt intelligente personligheten til Gemini."
 )
 
-# 4. --- API-KALLETS HJELPEFUNKSJONER ---
+# 4. --- API-KALLETS HJELPEFUNKSJONER (Med innlagt temperatur på 0.7) ---
 def prøv_openai(prompt, system_instruks):
     if not client_openai:
         raise Exception("OpenAI ikke klar.")
@@ -89,7 +91,8 @@ def prøv_openai(prompt, system_instruks):
     ]
     response = client_openai.chat.completions.create(
         model="gpt-4o-mini",
-        messages=meldinger
+        messages=meldinger,
+        temperature=0.7 # Gir mer naturlig og reflektert variasjon i språket
     )
     return response.choices[0].message.content
 
@@ -99,7 +102,10 @@ def prøv_gemini(prompt, system_instruks):
     response = client_gemini.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
-        config={"system_instruction": system_instruks}
+        config={
+            "system_instruction": system_instruks,
+            "temperature": 0.7 # Skrur opp kreativitet og flyt hos Gemini
+        }
     )
     return response.text
 
@@ -107,9 +113,10 @@ def prøv_anthropic(prompt, system_instruks):
     if not client_anthropic:
         raise Exception("Anthropic ikke klar.")
     kwargs = {
-        "model": "claude-sonnet-4-6", # Din fungerende variant!
-        "max_tokens": 1024,
-        "messages": [{"role": "user", "content": prompt}]
+        "model": "claude-sonnet-4-6",
+        "max_tokens": 1500, # Økt litt så den har plass til å reflektere dypere
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7 # Gir Claude den menneskelige finessen
     }
     if system_instruks:
         kwargs["system"] = system_instruks
@@ -130,16 +137,15 @@ with st.sidebar:
     octa_name = st.text_input("Gi din Octa et navn:", value="OctaCore Core")
     octa_persona = st.selectbox(
         "Velg primærfokus:",
-        ["Balansert (Miks av Gemini & ChatGPT)", "Teknisk arkitekt / Seniorutvikler", "Kreativ sparringspartner"]
+        ["Balansert (Varm & Reflektert)", "Teknisk arkitekt / Seniorutvikler", "Kreativ sparringspartner"]
     )
     
     custom_instructions = st.text_area(
         "Personlige instrukser for denne Octaen:",
-        placeholder="F.eks. 'Hjelp meg å organisere hverdagen'...",
+        placeholder="F.eks. 'Snakk til meg som en coach', 'Bruk eksempler i svarene'...",
         height=100
     )
     
-    # Knapp for å tømme chatten
     st.markdown("---")
     if st.button("Tøm samtalehistorikk 🗑️", type="secondary"):
         st.session_state.messages = []
@@ -153,39 +159,35 @@ if os.path.exists("OctaCore_ Elegant design og teknologi.png"):
 st.markdown("<br>", unsafe_allow_html=True)
 
 
-# 7. --- INITIALISER SAMTALEHISTORIKK (CHAT STATE) ---
+# 7. --- INITIALISER SAMTALEHISTORIKK ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Vis tidligere meldinger i tråden
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 
-# 8. --- EKTE CHAT-INPUT (OPPLEVES SOM GEMINI/CHATGPT) ---
-if user_prompt := st.chat_input(f"Spør {octa_name}..."):
+# 8. --- CHAT-INPUT ---
+if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     
-    # Vis brukerens melding umiddelbart i chatten
     with st.chat_message("user"):
         st.markdown(user_prompt)
     
-    # Lagre brukerens melding i historikken
     st.session_state.messages.append({"role": "user", "content": user_prompt})
 
     # Forbered systeminstruksen
     final_system_instruction = DEFAULT_SYSTEM
     if octa_persona == "Teknisk arkitekt / Seniorutvikler":
-        final_system_instruction += " Fokuser ekstremt tungt på nøyaktig kode, back-end arkitektur og beste praksis."
+        final_system_instruction += " Fokuser ekstremt tungt på nøyaktig kode, back-end arkitektur og dype forklaringer på beste praksis."
     elif octa_persona == "Kreativ sparringspartner":
-        final_system_instruction += " Vær utforskende, kom med innovative ideer og tenk utenfor boksen."
+        final_system_instruction += " Vær dypt utforskende, kom med innovative ideer og drøft konseptene filosoferende og åpent."
         
     if custom_instructions.strip():
-        final_system_instruction += f" Ytterligere brukerinstruks: {custom_instructions}"
+        final_system_instruction += f" Ekstra viktig regel fra brukeren: {custom_instructions}"
 
-    # Generer svar med animert chat-spinner
     with st.chat_message("assistant"):
-        with st.spinner(f"{octa_name} tenker..."):
+        with st.spinner(f"{octa_name} reflekterer..."):
             svar_endelig = None
             
             # Smart ruting-rekkefølge
@@ -194,7 +196,7 @@ if user_prompt := st.chat_input(f"Spør {octa_name}..."):
             else:
                 rekkefølge = [("Google Gemini", prøv_gemini), ("OpenAI", prøv_openai), ("Anthropic Claude", prøv_anthropic)]
 
-            # Prøv motorene etter tur
+            # Prøv motorene
             for navn, motor_funksjon in rekkefølge:
                 try:
                     svar_endelig = motor_funksjon(user_prompt, final_system_instruction)
@@ -204,8 +206,7 @@ if user_prompt := st.chat_input(f"Spør {octa_name}..."):
                     continue
 
             if not svar_endelig:
-                svar_endelig = "OctaCore AI opplever for øyeblikket høy trafikk. Vennligst prøv igjen om et øyeblikk."
+                svar_endelig = "Jeg opplever en midlertidig forstyrrelse i tankerekken min på grunn av høy trafikk på ruter-nodene. Kan du gjenta det?"
 
-            # Skriv ut svaret i chatten og lagre i historikken
             st.markdown(svar_endelig)
             st.session_state.messages.append({"role": "assistant", "content": svar_endelig})
