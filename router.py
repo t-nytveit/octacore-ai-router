@@ -7,7 +7,7 @@ from PIL import Image
 
 # 1. Sidetittel, layout og miniatyrlogo i nettleserfanen
 AVATAR_PATH = "OctaCore_icon.png"
-SIDEBAR_LOGO_PATH = "OctaCore_logo_transparent_white_text.jpg"
+MAIN_LOGO_PATH = "OctaCore_logo_transparent_white_text.jpg"
 
 st.set_page_config(
     page_title="OctaCore AI",
@@ -65,7 +65,7 @@ if ANTHROPIC_API_KEY:
     except Exception:
         pass
 
-# 4. Bakgrunnsbilde via Base64
+# 4. Bakgrunnsbilde via Base64 (Luksuriøst lær-tema)
 def get_base64_image(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as img_file:
@@ -214,13 +214,9 @@ if "current_chat_id" not in st.session_state:
 if "rename_id" not in st.session_state:
     st.session_state.rename_id = None
 
-# 9. INTEGRERT SIDEBAR (Nå med den gylne, transparente logoen på topp)
+# 9. INTEGRERT SIDEBAR
 with st.sidebar:
-    if os.path.exists(SIDEBAR_LOGO_PATH):
-        st.image(SIDEBAR_LOGO_PATH, use_container_width=True)
-    else:
-        st.title("OctaCore AI")
-
+    st.title("OctaCore AI")
     st.markdown("---")
 
     if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
@@ -292,9 +288,13 @@ with st.sidebar:
         height=80
     )
 
-# 10. Minimalistisk tittel på hovedskjerm
-st.title("OctaCore AI")
-st.markdown("<p style='color: #8b949e; font-size: 1.05rem; margin-top: -15px;'>Eksklusiv fler-modell ruter</p>", unsafe_allow_html=True)
+# 10. PLASSERING AV LOGOEN ØVERST TIL VENSTRE PÅ HOVEDSIDEN
+col_logo, _ = st.columns([2, 3])
+with col_logo:
+    if os.path.exists(MAIN_LOGO_PATH):
+        st.image(MAIN_LOGO_PATH, use_container_width=True)
+
+st.markdown("<p style='color: #8b949e; font-size: 1.05rem; margin-top: -5px; padding-left: 10px;'>Eksklusiv fler-modell ruter</p>", unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # 11. Hent aktiv samtalehistorikk
