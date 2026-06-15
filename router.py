@@ -65,7 +65,7 @@ if ANTHROPIC_API_KEY:
     except Exception:
         pass
 
-# 4. Bakgrunnsbilde via Base64 (Luksuriøst lær-tema)
+# 4. Bakgrunnsbilde via Base64
 def get_base64_image(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as img_file:
@@ -85,11 +85,15 @@ if bg_base64:
         </style>
     """, unsafe_allow_html=True)
 
-# 5. Global CSS-styling for et strømlinjeformet grensesnitt
+# 5. Global CSS-styling (Nå med fjerning av Streamlits tvingende topp-padding i sidepanelet)
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
         background-color: rgba(15, 18, 23, 0.97) !important;
+    }
+    /* Fjerner tomrommet og paddingen Streamlit lager automatisk øverst i sidebaren */
+    [data-testid="stSidebarUserContent"] {
+        padding-top: 1rem !important;
     }
     [data-testid="stChatMessage"] {
         background-color: rgba(22, 27, 34, 0.65) !important;
@@ -214,14 +218,12 @@ if "current_chat_id" not in st.session_state:
 if "rename_id" not in st.session_state:
     st.session_state.rename_id = None
 
-# 9. INTEGRERT SIDEBAR (Nå med den transparente, gylne logoen plassert helt på topp, over menyen)
+# 9. INTEGRERT SIDEBAR (Nå med KUN den gylne logoen øverst, all tekst-overskrift er fjernet)
 with st.sidebar:
     if os.path.exists(MAIN_LOGO_PATH):
         st.image(MAIN_LOGO_PATH, use_container_width=True)
-    else:
-        st.title("OctaCore AI")
-
-    st.markdown("---")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
 
     if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
         st.session_state.current_chat_id = None
@@ -292,8 +294,7 @@ with st.sidebar:
         height=80
     )
 
-# 10. Hovedskjerm - Tom topp for et helt minimalistisk chat-fokus
-# All løs spøkelsestekst er fjernet herfra
+# 10. Hovedskjerm - 100 % ren og minimalistisk uten løs spøkelsestekst
 
 # 11. Hent aktiv samtalehistorikk
 active_id = st.session_state.current_chat_id
