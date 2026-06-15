@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import base64
+import time
 from PIL import Image
 
 # 1. Sidetittel og layout
@@ -67,7 +68,6 @@ if bg_base64:
             margin-bottom: 10px;
             backdrop-filter: blur(10px);
         }}
-        /* Styling for samtale-knappene i sidepanelet */
         .stSidebar .stButton>button {{
             width: 100% !important;
             text-align: left !important;
@@ -85,7 +85,7 @@ if bg_base64:
         </style>
     """, unsafe_allow_html=True)
 
-# Menneskelig Systeminstruks (v4.1)
+# Menneskelig Systeminstruks
 DEFAULT_SYSTEM = (
     "Du er OctaCore AI, en eksklusiv, dypt intelligent og varm AI-assistent utviklet av OctaCore. "
     "Svarene dine skal ALDRI oppleves som enkle, mekaniske robotsvar. "
@@ -139,15 +139,15 @@ def prøv_anthropic(prompt, system_instruks):
     return response.content[0].text
 
 
-# 5. --- INITIALISER STATE FOR HISTORIKK OG FLERE SAMTALER ---
+# 5. --- INITIALISER STATE FOR HISTORIKK ---
 if "all_chats" not in st.session_state:
-    st.session_state.all_chats = {}  # Format: {chat_id: {"title": tittel, "messages": [meldinger]}}
+    st.session_state.all_chats = {}
 
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
 
 
-# 6. --- SIDEBAR: LOGO, NY SAMTALE & HISTORIKK ---
+# 6. --- SIDEBAR ---
 with st.sidebar:
     if os.path.exists("OctaCore_logo_transparent_white_text.jpg"):
         st.image("OctaCore_logo_transparent_white_text.jpg", use_container_width=True)
@@ -156,20 +156,17 @@ with st.sidebar:
         
     st.markdown("---")
     
-    # KNAPP: Start ny samtale
     if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
         st.session_state.current_chat_id = None
         st.rerun()
         
     st.markdown("<br><b>🗂️ Dine lagrede samtaler:</b>", unsafe_allow_html=True)
     
-    # VIS HISTORIKK: Liste ut alle lagrede samtaler automatisk
     if not st.session_state.all_chats:
         st.caption("Ingen lagrede samtaler ennå.")
     else:
         for chat_id in sorted(st.session_state.all_chats.keys(), reverse=True):
             title = st.session_state.all_chats[chat_id]["title"]
-            # Hvis dette er aktiv tråd, legg på en markering
             label = f"💬 {title}" if chat_id != st.session_state.current_chat_id else f"👉 💬 {title}"
             if st.button(label, key=f"btn_{chat_id}"):
                 st.session_state.current_chat_id = chat_id
@@ -198,7 +195,7 @@ if os.path.exists("OctaCore_ Elegant design og teknologi.png"):
 st.markdown("<br>", unsafe_allow_html=True)
 
 
-# 8. --- HENT ELLER OPPRETT AKTIV SAMTALE ---
+# 8. --- HENT AKTIV SAMTALE ---
 active_id = st.session_state.current_chat_id
 if active_id and active_id in st.session_state.all_chats:
     messages = st.session_state.all_chats[active_id]["messages"]
@@ -206,23 +203,24 @@ else:
     messages = []
 
 
-# 9. --- VIS CHAT-LOGGEN FOR AKTIV TRÅD ---
+# 9. --- VIS CHAT-LOGGEN ---
 for message in messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 
-# 10. --- INPUT-HÅNDTERING OG AUTOMATISK LAGRING ---
+# 10. --- INPUT-HÅNDTERING ---
 if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     
-    # Hvis dette er en helt ny tråd, generer en ny ID og opprett datastrukturen
+    # Hvis ny tråd, opprett struktur FØR vi legger til meldinger
     if not active_id:
-        import time
         active_id = str(int(time.time()))
         st.session_state.current_chat_id = active_id
         
-        # Lag en kjapp, ren tittel basert på de første 25 tegnene av prompten
         clean_title = user_prompt.strip()[:25] + "..." if len(user_prompt.strip()) > 25 else user_prompt.strip()
+        if not clean_title:
+            clean_title = "Ny samtale"
+            
         st.session_state.all_chats[active_id] = {"title": clean_title, "messages": []}
         messages = st.session_state.all_chats[active_id]["messages"]
     
@@ -246,7 +244,6 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
         with st.spinner(f"{octa_name} reflekterer..."):
             svar_endelig = None
             
-            # Smart ruting
             if "kode" in user_prompt.lower() or "arkitektur" in user_prompt.lower() or octa_persona == "Teknisk arkitekt / Seniorutvikler":
                 rekkefølge = [("OpenAI", prøv_openai), ("Anthropic Claude", prøv_anthropic), ("Google Gemini", prøv_gemini)]
             else:
@@ -264,8 +261,7 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
                 svar_endelig = "Jeg opplevede en midlertidig forstyrrelse i tankerekken min. Kan du gjenta det?"
 
             st.markdown(svar_endelig)
-            # Lagre assistentens svar i riktig tråd
             messages.append({"role": "assistant", "content": svar_endelig})
             
-            # Tving Streamlit til å oppdatere sidepanelet så den nye samtalen vises med en gang
+            # En sikker, ren omstart for å oppdatere sidetittelen i menyen uten loop-fare
             st.rerun()
