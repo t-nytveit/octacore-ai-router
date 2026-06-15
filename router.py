@@ -214,9 +214,13 @@ if "current_chat_id" not in st.session_state:
 if "rename_id" not in st.session_state:
     st.session_state.rename_id = None
 
-# 9. INTEGRERT SIDEBAR
+# 9. INTEGRERT SIDEBAR (Nå med den transparente, gylne logoen plassert helt på topp, over menyen)
 with st.sidebar:
-    st.title("OctaCore AI")
+    if os.path.exists(MAIN_LOGO_PATH):
+        st.image(MAIN_LOGO_PATH, use_container_width=True)
+    else:
+        st.title("OctaCore AI")
+
     st.markdown("---")
 
     if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
@@ -288,14 +292,8 @@ with st.sidebar:
         height=80
     )
 
-# 10. PLASSERING AV LOGOEN ØVERST TIL VENSTRE PÅ HOVEDSIDEN
-col_logo, _ = st.columns([2, 3])
-with col_logo:
-    if os.path.exists(MAIN_LOGO_PATH):
-        st.image(MAIN_LOGO_PATH, use_container_width=True)
-
-st.markdown("<p style='color: #8b949e; font-size: 1.05rem; margin-top: -5px; padding-left: 10px;'>Eksklusiv fler-modell ruter</p>", unsafe_allow_html=True)
-st.markdown("<br>", unsafe_allow_html=True)
+# 10. Hovedskjerm - Tom topp for et helt minimalistisk chat-fokus
+# All løs spøkelsestekst er fjernet herfra
 
 # 11. Hent aktiv samtalehistorikk
 active_id = st.session_state.current_chat_id
