@@ -85,15 +85,15 @@ if bg_base64:
         </style>
     """, unsafe_allow_html=True)
 
-# Menneskelig Systeminstruks
+# KORRIGERT SYSTEMINSTRUKS (v4.3) - FORBYR GENERISK ROBOT-SPRÅK
 DEFAULT_SYSTEM = (
-    "Du er OctaCore AI, en eksklusiv, dypt intelligent og varm AI-assistent utviklet av OctaCore. "
-    "Svarene dine skal ALDRI oppleves som enkle, mekaniske robotsvar. "
-    "Du skal skrive med en naturlig, reflektert og engasjerende menneskelig tone – akkurat som en dyktig rådgiver og samtalepartner. "
-    "Vis situasjonsforståelse og empati der det er naturlig. Når du løser oppgaver eller svarer på spørsmål, "
-    "skal du ikke bare spytte ut rådata, men forklare tankegangen din, drøfte nyanser og gi helhetlige, "
-    "velformulerte svar med god språklig flyt på feilfri norsk. Kombiner den strukturerte dybden fra ChatGPT "
-    "med den levende og emosjonelt intelligente personligheten til Gemini."
+    "Du er OctaCore AI, en eksklusiv, dypt reflektert og menneskelig AI-partner utviklet av OctaCore. "
+    "Du skal ALDRI svare i form av stive, upersonlige rapporter eller generiske 'IT-konsulent'-evalueringer. "
+    "Unngå unaturlig opplisting og standardiserte fraser som 'Styrker i koden' eller 'Mulige forbedringer' med mindre du blir eksplisitt bedt om en formell rapport. "
+    "Snakk i stedet som en levende, skarp og engasjert samtalepartner og teknologipartner. "
+    "Når du diskuterer kode, oppgaver eller konsepter, skal du drøfte, reflektere, bruke et flytende hverdagsuttrykk "
+    "og ha en naturlig dialog på feilfri norsk. Vis personlighet, dybde og situasjonsforståelse. "
+    "Kombiner den intellektuelle tyngden til ChatGPT med den varme, flytende og emosjonelt intelligente sjelen til Gemini."
 )
 
 # 4. --- API-KALLETS HJELPEFUNKSJONER ---
@@ -175,7 +175,7 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("⚙️ Innstillinger")
     
-    octa_name = st.text_input("Gi din Octa et navn:", value="OctaCore Core")
+    octa_name = st.text_input("Gi din Octa et nanny:", value="OctaCore Core")
     octa_persona = st.selectbox(
         "Velg primærfokus:",
         ["Balansert (Varm & Reflektert)", "Teknisk arkitekt / Seniorutvikler", "Kreativ sparringspartner"]
@@ -212,7 +212,6 @@ for message in messages:
 # 10. --- INPUT-HÅNDTERING ---
 if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     
-    # Hvis ny tråd, opprett struktur FØR vi legger til meldinger
     if not active_id:
         active_id = str(int(time.time()))
         st.session_state.current_chat_id = active_id
@@ -224,7 +223,6 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
         st.session_state.all_chats[active_id] = {"title": clean_title, "messages": []}
         messages = st.session_state.all_chats[active_id]["messages"]
     
-    # Vis og lagre brukerens melding
     with st.chat_message("user"):
         st.markdown(user_prompt)
     messages.append({"role": "user", "content": user_prompt})
@@ -239,7 +237,6 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     if custom_instructions.strip():
         final_system_instruction += f" Ekstra viktig regel fra brukeren: {custom_instructions}"
 
-    # Generer og vis svaret
     with st.chat_message("assistant"):
         with st.spinner(f"{octa_name} reflekterer..."):
             svar_endelig = None
@@ -263,5 +260,4 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
             st.markdown(svar_endelig)
             messages.append({"role": "assistant", "content": svar_endelig})
             
-            # En sikker, ren omstart for å oppdatere sidetittelen i menyen uten loop-fare
             st.rerun()
