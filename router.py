@@ -58,7 +58,15 @@ if bg_base64:
             background-attachment: fixed;
         }}
         [data-testid="stSidebar"] {{
-            background-color: rgba(15, 18, 23, 0.9) !important;
+            background-color: rgba(15, 18, 23, 0.95) !important;
+        }}
+        /* Styling for chat-meldinger for å matche lær-temaet */
+        [data-testid="stChatMessage"] {{
+            background-color: rgba(22, 27, 34, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            backdrop-filter: blur(10px);
         }}
         </style>
     """, unsafe_allow_html=True)
@@ -74,7 +82,7 @@ DEFAULT_SYSTEM = (
 # 4. --- API-KALLETS HJELPEFUNKSJONER ---
 def prøv_openai(prompt, system_instruks):
     if not client_openai:
-        raise Exception("OpenAI-klient ikke konfigurert.")
+        raise Exception("OpenAI ikke klar.")
     meldinger = [
         {"role": "system", "content": system_instruks},
         {"role": "user", "content": prompt}
@@ -87,7 +95,7 @@ def prøv_openai(prompt, system_instruks):
 
 def prøv_gemini(prompt, system_instruks):
     if not client_gemini:
-        raise Exception("Gemini-klient ikke konfigurert.")
+        raise Exception("Gemini ikke klar.")
     response = client_gemini.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
@@ -97,9 +105,9 @@ def prøv_gemini(prompt, system_instruks):
 
 def prøv_anthropic(prompt, system_instruks):
     if not client_anthropic:
-        raise Exception("Anthropic-klient ikke konfigurert.")
+        raise Exception("Anthropic ikke klar.")
     kwargs = {
-        "model": "claude-sonnet-4-6",
+        "model": "claude-sonnet-4-6", # Din fungerende variant!
         "max_tokens": 1024,
         "messages": [{"role": "user", "content": prompt}]
     }
@@ -109,7 +117,7 @@ def prøv_anthropic(prompt, system_instruks):
     return response.content[0].text
 
 
-# 5. --- SIDEBAR: SKREDDERSY DIN OCTACORE OCTA ---
+# 5. --- SIDEBAR: CONFIG ---
 with st.sidebar:
     if os.path.exists("OctaCore_logo_transparent_white_text.jpg"):
         st.image("OctaCore_logo_transparent_white_text.jpg", use_container_width=True)
@@ -119,7 +127,6 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("💎 Konfigurer din Octa")
     
-    # Endret terminologi fra Gem til Octa
     octa_name = st.text_input("Gi din Octa et navn:", value="OctaCore Core")
     octa_persona = st.selectbox(
         "Velg primærfokus:",
@@ -128,74 +135,77 @@ with st.sidebar:
     
     custom_instructions = st.text_area(
         "Personlige instrukser for denne Octaen:",
-        placeholder="F.eks. 'Hjelp meg å organisere hverdagen', 'Svar alltid strukturert'...",
+        placeholder="F.eks. 'Hjelp meg å organisere hverdagen'...",
         height=100
     )
     
+    # Knapp for å tømme chatten
     st.markdown("---")
-    st.caption(f"Aktiv profil: {octa_name}")
+    if st.button("Tøm samtalehistorikk 🗑️", type="secondary"):
+        st.session_state.messages = []
+        st.rerun()
 
 
-# 6. --- HOVEDSKJERM ---
+# 6. --- HOVEDSKJERM BANNER ---
 if os.path.exists("OctaCore_ Elegant design og teknologi.png"):
     st.image("OctaCore_ Elegant design og teknologi.png", use_container_width=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-user_prompt = st.text_area(
-    f"Hva kan {octa_name} løse for deg i dag?", 
-    placeholder="Skriv din oppgave eller ditt spørsmål her...",
-    height=120,
-    key="user_prompt"
-)
 
-col_btn, _ = st.columns([1, 4])
-with col_btn:
-    kjor_knapp = st.button("Fyr løs 🚀", type="primary")
+# 7. --- INITIALISER SAMTALEHISTORIKK (CHAT STATE) ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Vis tidligere meldinger i tråden
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 
-# 7. --- SKJULT SMART-RUTER MED AUTOMATISK RESEVE (FAILOVER) ---
-if kjor_knapp:
-    if not user_prompt.strip():
-        st.warning("Vennligst skriv inn en melding først.")
-    else:
-        # Bygg systeminstruksen basert på Octa-konfigurasjonen
-        final_system_instruction = DEFAULT_SYSTEM
-        if octa_persona == "Teknisk arkitekt / Seniorutvikler":
-            final_system_instruction += " Fokuser ekstremt tungt på nøyaktig kode, back-end arkitektur og beste praksis."
-        elif octa_persona == "Kreativ sparringspartner":
-            final_system_instruction += " Vær utforskende, kom med innovative ideer og tenk utenfor boksen."
-            
-        if custom_instructions.strip():
-            final_system_instruction += f" Ytterligere brukerinstruks: {custom_instructions}"
+# 8. --- EKTE CHAT-INPUT (OPPLEVES SOM GEMINI/CHATGPT) ---
+if user_prompt := st.chat_input(f"Spør {octa_name}..."):
+    
+    # Vis brukerens melding umiddelbart i chatten
+    with st.chat_message("user"):
+        st.markdown(user_prompt)
+    
+    # Lagre brukerens melding i historikken
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-        with st.spinner(f"{octa_name} behandler forespørselen..."):
+    # Forbered systeminstruksen
+    final_system_instruction = DEFAULT_SYSTEM
+    if octa_persona == "Teknisk arkitekt / Seniorutvikler":
+        final_system_instruction += " Fokuser ekstremt tungt på nøyaktig kode, back-end arkitektur og beste praksis."
+    elif octa_persona == "Kreativ sparringspartner":
+        final_system_instruction += " Vær utforskende, kom med innovative ideer og tenk utenfor boksen."
+        
+    if custom_instructions.strip():
+        final_system_instruction += f" Ytterligere brukerinstruks: {custom_instructions}"
+
+    # Generer svar med animert chat-spinner
+    with st.chat_message("assistant"):
+        with st.spinner(f"{octa_name} tenker..."):
             svar_endelig = None
-            feilmeldinger = []
-
-            # Trinn 1: Definer rekkefølgen motorene skal forsøkes basert på oppgaven
-            # Hvis det handler om koding eller teknisk fokus, prioriterer vi OpenAI -> Anthropic -> Gemini
+            
+            # Smart ruting-rekkefølge
             if "kode" in user_prompt.lower() or "arkitektur" in user_prompt.lower() or octa_persona == "Teknisk arkitekt / Seniorutvikler":
                 rekkefølge = [("OpenAI", prøv_openai), ("Anthropic Claude", prøv_anthropic), ("Google Gemini", prøv_gemini)]
             else:
-                # Standard oppsett: Gemini -> OpenAI -> Anthropic
                 rekkefølge = [("Google Gemini", prøv_gemini), ("OpenAI", prøv_openai), ("Anthropic Claude", prøv_anthropic)]
 
-            # Trinn 2: Kjør gjennom rekkefølgen til en av dem leverer
+            # Prøv motorene etter tur
             for navn, motor_funksjon in rekkefølge:
                 try:
                     svar_endelig = motor_funksjon(user_prompt, final_system_instruction)
                     if svar_endelig:
-                        break # Vi har et gyldig svar, avbryt loopen!
-                except Exception as e:
-                    feilmeldinger.append(f"{navn} feilet.")
-                    continue # Prøv neste motor i rekken automatisk
+                        break
+                except Exception:
+                    continue
 
-            # Trinn 3: Hvis alt mot formodning feilet, gi en kontrollert melding
             if not svar_endelig:
-                svar_endelig = "OctaCore AI opplever for øyeblikket høy trafikk på sine ruter-noder. Vennligst sjekk API-saldoene dine eller prøv igjen om et øyeblikk."
+                svar_endelig = "OctaCore AI opplever for øyeblikket høy trafikk. Vennligst prøv igjen om et øyeblikk."
 
-            # Presenter det ferdige, strømlinjeformede svaret
-            st.markdown("---")
-            st.markdown(f"### ✨ Svar fra {octa_name}")
+            # Skriv ut svaret i chatten og lagre i historikken
             st.markdown(svar_endelig)
+            st.session_state.messages.append({"role": "assistant", "content": svar_endelig})
