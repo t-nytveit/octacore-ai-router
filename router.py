@@ -5,7 +5,7 @@ import time
 import json
 from PIL import Image
 
-# 1. Sidetittel og layout aller først (Nå med din egen miniatyr-logo i nettleserfanen)
+# 1. Sidetittel, layout og miniatyrlogo i nettleserfanen
 AVATAR_PATH = "OctaCore_icon.png"
 SIDEBAR_LOGO_PATH = "OctaCore_logo_transparent_white_text.jpg"
 
@@ -65,7 +65,7 @@ if ANTHROPIC_API_KEY:
     except Exception:
         pass
 
-# 4. Bakgrunnsbilde via Base64 (Luksuriøst lær-tema)
+# 4. Bakgrunnsbilde via Base64
 def get_base64_image(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as img_file:
@@ -214,7 +214,7 @@ if "current_chat_id" not in st.session_state:
 if "rename_id" not in st.session_state:
     st.session_state.rename_id = None
 
-# 9. INTEGRERT SIDEBAR
+# 9. INTEGRERT SIDEBAR (Nå med den gylne, transparente logoen på topp)
 with st.sidebar:
     if os.path.exists(SIDEBAR_LOGO_PATH):
         st.image(SIDEBAR_LOGO_PATH, use_container_width=True)
@@ -292,4 +292,101 @@ with st.sidebar:
         height=80
     )
 
-# 10. Minimalistisk Tittel på hovedskjerm (Er
+# 10. Minimalistisk tittel på hovedskjerm
+st.title("OctaCore AI")
+st.markdown("<p style='color: #8b949e; font-size: 1.05rem; margin-top: -15px;'>Eksklusiv fler-modell ruter</p>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 11. Hent aktiv samtalehistorikk
+active_id = st.session_state.current_chat_id
+if active_id and active_id in st.session_state.all_chats:
+    messages = st.session_state.all_chats[active_id]["messages"]
+else:
+    messages = []
+
+# 12. Rendring av historisk chat-logg med miniatyr-logo som avatar
+for message in messages:
+    avatar_to_use = AVATAR_PATH if (message["role"] == "assistant" and os.path.exists(AVATAR_PATH)) else None
+    with st.chat_message(message["role"], avatar=avatar_to_use):
+        st.markdown(message["content"])
+        if message["role"] == "assistant" and "model" in message:
+            modell = message["model"]
+            css = "model-tag-gemini" if "Gemini" in modell else ("model-tag-openai" if "OpenAI" in modell else "model-tag-anthropic")
+            st.markdown(f'<div class="model-tag {css}">⚡ {modell}</div>', unsafe_allow_html=True)
+
+# 13. Bygg dynamisk systeminstruks
+def bygg_system_instruks():
+    instruks = DEFAULT_SYSTEM
+    if octa_persona == "Teknisk arkitekt / Seniorutvikler":
+        instruks += " Fokuser tungt på nøyaktig kode, arkitektur og beste praksis."
+    elif octa_persona == "Kreativ sparringspartner":
+        instruks += " Vær utforskende, kom med innovative ideer og drøft konseptene åpent og filosofisk."
+    if custom_instructions.strip():
+        instruks += f" Ekstra regel fra brukeren: {custom_instructions}"
+    return instruks
+
+# 14. Brukerinput og asynkron prosessering
+if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
+
+    tving_omstart_for_tittel = False
+    
+    # Håndtering av nyopprettede samtaler
+    if not active_id:
+        active_id = str(int(time.time()))
+        st.session_state.current_chat_id = active_id
+        clean_title = user_prompt.strip()[:28] + "…" if len(user_prompt.strip()) > 28 else user_prompt.strip()
+        st.session_state.all_chats[active_id] = {"title": clean_title or "Ny samtale", "messages": []}
+        messages = st.session_state.all_chats[active_id]["messages"]
+        tving_omstart_for_tittel = True
+
+    with st.chat_message("user"):
+        st.markdown(user_prompt)
+    messages.append({"role": "user", "content": user_prompt})
+
+    final_system = bygg_system_instruks()
+    meldingsliste = bygg_meldingsliste(messages[:-1], user_prompt)
+
+    # Ruter-rekkefølge basert på innhold
+    er_teknisk = "kode" in user_prompt.lower() or "arkitektur" in user_prompt.lower() or octa_persona == "Teknisk arkitekt / Seniorutvikler"
+    if er_teknisk:
+        rekkefølge = [
+            ("OpenAI (gpt-4o-mini)", stream_openai),
+            ("Anthropic (claude-sonnet-4-6)", stream_anthropic),
+            ("Google Gemini (gemini-2.5-flash)", stream_gemini),
+        ]
+    else:
+        rekkefølge = [
+            ("Google Gemini (gemini-2.5-flash)", stream_gemini),
+            ("OpenAI (gpt-4o-mini)", stream_openai),
+            ("Anthropic (claude-sonnet-4-6)", stream_anthropic),
+        ]
+
+    # Viser miniatyr-logoen som avatar under genereringen live
+    avatar_to_use = AVATAR_PATH if os.path.exists(AVATAR_PATH) else None
+    with st.chat_message("assistant", avatar=avatar_to_use):
+        svar_endelig = None
+        brukt_modell = None
+
+        for modell_navn, stream_fn in rekkefølge:
+            try:
+                svar_endelig = st.write_stream(stream_fn(meldingsliste, final_system))
+                brukt_modell = modell_navn
+                break
+            except Exception:
+                continue
+
+        if not svar_endelig:
+            svar_endelig = "Jeg opplevde en midlertidig forstyrrelse i tankerekken min. Kan du gjenta det?"
+            brukt_modell = "ukjent"
+            st.markdown(svar_endelig)
+
+        if brukt_modell:
+            css = "model-tag-gemini" if "Gemini" in brukt_modell else ("model-tag-openai" if "OpenAI" in brukt_modell else "model-tag-anthropic")
+            st.markdown(f'<div class="model-tag {css}">⚡ {brukt_modell}</div>', unsafe_allow_html=True)
+
+    # Lagre og persister data permanent
+    messages.append({"role": "assistant", "content": svar_endelig, "model": brukt_modell or "ukjent"})
+    lagre_historikk(st.session_state.all_chats)
+    
+    if tving_omstart_for_tittel:
+        st.rerun()
