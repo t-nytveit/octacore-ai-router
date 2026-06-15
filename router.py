@@ -129,7 +129,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 6. Korrigert, menneskelig Systeminstruks (Forbyr rapportstiler)
+# 6. Menneskelig Systeminstruks
 DEFAULT_SYSTEM = (
     "Du er OctaCore AI, en eksklusiv, dypt reflektert og menneskelig AI-partner utviklet av OctaCore. "
     "Du skal ALDRI svare i form av stive, upersonlige rapporter eller generiske 'IT-konsulent'-evalueringer. "
@@ -167,7 +167,7 @@ def stream_gemini(meldinger, system_instruks):
     if not client_gemini:
         raise Exception("Gemini ikke klar.")
     
-    # Konverterer meldingshistorikken til det offisielle strukturerte formatet for google-genai
+    from google import genai
     contents_input = []
     for m in meldinger:
         role_label = "user" if m["role"] == "user" else "model"
@@ -198,36 +198,3 @@ def stream_anthropic(meldinger, system_instruks):
         messages=meldinger,
         temperature=0.7
     ) as stream:
-        for text in stream.text_stream:
-            yield text
-
-# 8. Initialiser app-tilstand
-if "all_chats" not in st.session_state:
-    st.session_state.all_chats = last_inn_historikk()
-
-if "current_chat_id" not in st.session_state:
-    st.session_state.current_chat_id = None
-
-if "rename_id" not in st.session_state:
-    st.session_state.rename_id = None
-
-# 9. INTEGRERT SIDEBAR
-with st.sidebar:
-    if os.path.exists("OctaCore_logo_transparent_white_text.jpg"):
-        st.image("OctaCore_logo_transparent_white_text.jpg", use_container_width=True)
-    else:
-        st.title("OctaCore AI")
-
-    st.markdown("---")
-
-    if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
-        st.session_state.current_chat_id = None
-        st.session_state.rename_id = None
-        st.rerun()
-
-    st.markdown("<br><b>🗂️ Dine samtaler:</b>", unsafe_allow_html=True)
-
-    if not st.session_state.all_chats:
-        st.caption("Ingen lagrede samtaler ennå.")
-    else:
-        for chat_id in sorted(st.session_state.all_chats.keys(), reverse
