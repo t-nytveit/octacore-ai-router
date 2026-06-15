@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import base64
 import time
+import json
 from PIL import Image
 
 # 1. Sidetittel og layout
@@ -11,7 +12,27 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. Hent API-nøkler trygt fra Streamlit Secrets
+# Filnavn for permanent lagring av samtaler
+HISTORY_FILE = "octacore_chat_history.json"
+
+# 2. Hjelpefunksjoner for å lagre og laste historikk fra JSON-fil
+def last_inn_historikk():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def lagre_historikk(data):
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Kunne ikke lagre til fil: {e}")
+
+# 3. Hent API-nøkler trygt fra Streamlit Secrets
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY")
@@ -41,7 +62,7 @@ if ANTHROPIC_API_KEY:
     except Exception:
         pass
 
-# 3. Bakgrunnshåndtering via Base64
+# 4. Bakgrunnshåndtering via Base64
 def get_base64_image(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as img_file:
@@ -85,7 +106,7 @@ if bg_base64:
         </style>
     """, unsafe_allow_html=True)
 
-# KORRIGERT SYSTEMINSTRUKS (v4.3) - FORBYR GENERISK ROBOT-SPRÅK
+# Menneskelig Systeminstruks (v4.3)
 DEFAULT_SYSTEM = (
     "Du er OctaCore AI, en eksklusiv, dypt reflektert og menneskelig AI-partner utviklet av OctaCore. "
     "Du skal ALDRI svare i form av stive, upersonlige rapporter eller generiske 'IT-konsulent'-evalueringer. "
@@ -96,7 +117,7 @@ DEFAULT_SYSTEM = (
     "Kombiner den intellektuelle tyngden til ChatGPT med den varme, flytende og emosjonelt intelligente sjelen til Gemini."
 )
 
-# 4. --- API-KALLETS HJELPEFUNKSJONER ---
+# 5. --- API-KALLETS HJELPEFUNKSJONER ---
 def prøv_openai(prompt, system_instruks):
     if not client_openai:
         raise Exception("OpenAI ikke klar.")
@@ -139,15 +160,15 @@ def prøv_anthropic(prompt, system_instruks):
     return response.content[0].text
 
 
-# 5. --- INITIALISER STATE FOR HISTORIKK ---
+# 6. --- INITIALISER STATE OG LAST INN FRA FIL ---
 if "all_chats" not in st.session_state:
-    st.session_state.all_chats = {}
+    st.session_state.all_chats = last_inn_historikk()
 
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
 
 
-# 6. --- SIDEBAR ---
+# 7. --- SIDEBAR ---
 with st.sidebar:
     if os.path.exists("OctaCore_logo_transparent_white_text.jpg"):
         st.image("OctaCore_logo_transparent_white_text.jpg", use_container_width=True)
@@ -172,10 +193,19 @@ with st.sidebar:
                 st.session_state.current_chat_id = chat_id
                 st.rerun()
 
+    # KNAPP FOR Å SLETTE ALT
+    st.markdown("---")
+    if st.button("🗑️ Slett absolutt alle samtaler", type="secondary", use_container_width=True):
+        st.session_state.all_chats = {}
+        st.session_state.current_chat_id = None
+        if os.path.exists(HISTORY_FILE):
+            os.remove(HISTORY_FILE)
+        st.rerun()
+
     st.markdown("---")
     st.subheader("⚙️ Innstillinger")
     
-    octa_name = st.text_input("Gi din Octa et nanny:", value="OctaCore Core")
+    octa_name = st.text_input("Gi din Octa et navn:", value="OctaCore Core")
     octa_persona = st.selectbox(
         "Velg primærfokus:",
         ["Balansert (Varm & Reflektert)", "Teknisk arkitekt / Seniorutvikler", "Kreativ sparringspartner"]
@@ -188,14 +218,14 @@ with st.sidebar:
     )
 
 
-# 7. --- HOVEDSKJERM BANNER ---
+# 8. --- HOVEDSKJERM BANNER ---
 if os.path.exists("OctaCore_ Elegant design og teknologi.png"):
     st.image("OctaCore_ Elegant design og teknologi.png", use_container_width=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 
-# 8. --- HENT AKTIV SAMTALE ---
+# 9. --- HENT AKTIV SAMTALE ---
 active_id = st.session_state.current_chat_id
 if active_id and active_id in st.session_state.all_chats:
     messages = st.session_state.all_chats[active_id]["messages"]
@@ -203,13 +233,13 @@ else:
     messages = []
 
 
-# 9. --- VIS CHAT-LOGGEN ---
+# 10. --- VIS CHAT-LOGGEN ---
 for message in messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 
-# 10. --- INPUT-HÅNDTERING ---
+# 11. --- INPUT-HÅNDTERING ---
 if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     
     if not active_id:
@@ -259,5 +289,8 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
 
             st.markdown(svar_endelig)
             messages.append({"role": "assistant", "content": svar_endelig})
+            
+            # Lagre oppdatert data permanent til JSON-filen
+            lagre_historikk(st.session_state.all_chats)
             
             st.rerun()
