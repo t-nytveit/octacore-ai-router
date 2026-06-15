@@ -198,3 +198,191 @@ def stream_anthropic(meldinger, system_instruks):
         messages=meldinger,
         temperature=0.7
     ) as stream:
+        for text in stream.text_stream:
+            yield text
+
+# 8. Initialiser app-tilstand
+if "all_chats" not in st.session_state:
+    st.session_state.all_chats = last_inn_historikk()
+
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
+
+if "rename_id" not in st.session_state:
+    st.session_state.rename_id = None
+
+# 9. INTEGRERT SIDEBAR
+with st.sidebar:
+    if os.path.exists("OctaCore_logo_transparent_white_text.jpg"):
+        st.image("OctaCore_logo_transparent_white_text.jpg", use_container_width=True)
+    else:
+        st.title("OctaCore AI")
+
+    st.markdown("---")
+
+    if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
+        st.session_state.current_chat_id = None
+        st.session_state.rename_id = None
+        st.rerun()
+
+    st.markdown("<br><b>🗂️ Dine samtaler:</b>", unsafe_allow_html=True)
+
+    if not st.session_state.all_chats:
+        st.caption("Ingen lagrede samtaler ennå.")
+    else:
+        for chat_id in sorted(st.session_state.all_chats.keys(), reverse=True):
+            title = st.session_state.all_chats[chat_id]["title"]
+            is_active = chat_id == st.session_state.current_chat_id
+
+            if st.session_state.rename_id == chat_id:
+                ny_tittel = st.text_input("Nytt navn:", value=title, key=f"rename_{chat_id}")
+                col_ok, col_avbryt = st.columns(2)
+                with col_ok:
+                    if st.button("✅", key=f"ok_{chat_id}"):
+                        st.session_state.all_chats[chat_id]["title"] = ny_tittel.strip() or title
+                        lagre_historikk(st.session_state.all_chats)
+                        st.session_state.rename_id = None
+                        st.rerun()
+                with col_avbryt:
+                    if st.button("❌", key=f"avbryt_{chat_id}"):
+                        st.session_state.rename_id = None
+                        st.rerun()
+            else:
+                col_btn, col_rename, col_del = st.columns([6, 1, 1])
+                with col_btn:
+                    label = f"{'👉 ' if is_active else ''}💬 {title}"
+                    if st.button(label, key=f"btn_{chat_id}"):
+                        st.session_state.current_chat_id = chat_id
+                        st.session_state.rename_id = None
+                        st.rerun()
+                with col_rename:
+                    if st.button("✏️", key=f"ren_{chat_id}", help="Gi ny tittel"):
+                        st.session_state.rename_id = chat_id
+                        st.rerun()
+                with col_del:
+                    if st.button("🗑", key=f"del_{chat_id}", help="Slett denne samtalen"):
+                        del st.session_state.all_chats[chat_id]
+                        if st.session_state.current_chat_id == chat_id:
+                            st.session_state.current_chat_id = None
+                        lagre_historikk(st.session_state.all_chats)
+                        st.rerun()
+
+    st.markdown("---")
+    if st.button("🗑️ Slett alle samtaler", type="secondary", use_container_width=True):
+        st.session_state.all_chats = {}
+        st.session_state.current_chat_id = None
+        if os.path.exists(HISTORY_FILE):
+            os.remove(HISTORY_FILE)
+        st.rerun()
+
+    st.markdown("---")
+    st.subheader("⚙️ Innstillinger")
+
+    octa_name = st.text_input("Gi din Octa et navn:", value="OctaCore")
+    octa_persona = st.selectbox(
+        "Velg primærfokus:",
+        ["Balansert (Varm & Reflektert)", "Teknisk arkitekt / Seniorutvikler", "Kreativ sparringspartner"]
+    )
+    custom_instructions = st.text_area(
+        "Personlige instrukser:",
+        placeholder="F.eks. 'Svar alltid strukturert'...",
+        height=80
+    )
+
+# 10. Topp-banner
+if os.path.exists("OctaCore_ Elegant design og teknologi.png"):
+    st.image("OctaCore_ Elegant design og teknologi.png", use_container_width=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 11. Hent aktiv samtalehistorikk
+active_id = st.session_state.current_chat_id
+if active_id and active_id in st.session_state.all_chats:
+    messages = st.session_state.all_chats[active_id]["messages"]
+else:
+    messages = []
+
+# 12. Rendring av historisk chat-logg
+for message in messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        if message["role"] == "assistant" and "model" in message:
+            modell = message["model"]
+            css = "model-tag-gemini" if "Gemini" in modell else ("model-tag-openai" if "OpenAI" in modell else "model-tag-anthropic")
+            st.markdown(f'<div class="model-tag {css}">⚡ {modell}</div>', unsafe_allow_html=True)
+
+# 13. Bygg dynamisk systeminstruks
+def bygg_system_instruks():
+    instruks = DEFAULT_SYSTEM
+    if octa_persona == "Teknisk arkitekt / Seniorutvikler":
+        instruks += " Fokuser tungt på nøyaktig kode, arkitektur og beste praksis."
+    elif octa_persona == "Kreativ sparringspartner":
+        instruks += " Vær utforskende, kom med innovative ideer og drøft konseptene åpent og filosofisk."
+    if custom_instructions.strip():
+        instruks += f" Ekstra regel fra brukeren: {custom_instructions}"
+    return instruks
+
+# 14. Brukerinput og asynkron prosessering
+if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
+
+    tving_omstart_for_tittel = False
+    
+    # Håndtering av nyopprettede samtaler tråder
+    if not active_id:
+        active_id = str(int(time.time()))
+        st.session_state.current_chat_id = active_id
+        clean_title = user_prompt.strip()[:28] + "…" if len(user_prompt.strip()) > 28 else user_prompt.strip()
+        st.session_state.all_chats[active_id] = {"title": clean_title or "Ny samtale", "messages": []}
+        messages = st.session_state.all_chats[active_id]["messages"]
+        tving_omstart_for_tittel = True
+
+    with st.chat_message("user"):
+        st.markdown(user_prompt)
+    messages.append({"role": "user", "content": user_prompt})
+
+    final_system = bygg_system_instruks()
+    meldingsliste = bygg_meldingsliste(messages[:-1], user_prompt)
+
+    # Ruter-rekkefølge basert på innhold
+    er_teknisk = "kode" in user_prompt.lower() or "arkitektur" in user_prompt.lower() or octa_persona == "Teknisk arkitekt / Seniorutvikler"
+    if er_teknisk:
+        rekkefølge = [
+            ("OpenAI (gpt-4o-mini)", stream_openai),
+            ("Anthropic (claude-sonnet-4-6)", stream_anthropic),
+            ("Google Gemini (gemini-2.5-flash)", stream_gemini),
+        ]
+    else:
+        rekkefølge = [
+            ("Google Gemini (gemini-2.5-flash)", stream_gemini),
+            ("OpenAI (gpt-4o-mini)", stream_openai),
+            ("Anthropic (claude-sonnet-4-6)", stream_anthropic),
+        ]
+
+    with st.chat_message("assistant"):
+        svar_endelig = None
+        brukt_modell = None
+
+        for modell_navn, stream_fn in rekkefølge:
+            try:
+                svar_endelig = st.write_stream(stream_fn(meldingsliste, final_system))
+                brukt_modell = modell_navn
+                break
+            except Exception:
+                continue
+
+        if not svar_endelig:
+            svar_endelig = "Jeg opplevde en midlertidig forstyrrelse i tankerekken min. Kan du gjenta det?"
+            brukt_modell = "ukjent"
+            st.markdown(svar_endelig)
+
+        if brukt_modell:
+            css = "model-tag-gemini" if "Gemini" in brukt_modell else ("model-tag-openai" if "OpenAI" in brukt_modell else "model-tag-anthropic")
+            st.markdown(f'<div class="model-tag {css}">⚡ {brukt_modell}</div>', unsafe_allow_html=True)
+
+    # Lagre og persister data permanent
+    messages.append({"role": "assistant", "content": svar_endelig, "model": brukt_modell or "ukjent"})
+    lagre_historikk(st.session_state.all_chats)
+    
+    # Kjører kun omstart dersom sidepanelet må tvinges til å vise den nye samtaletittelen umiddelbart
+    if tving_omstart_for_tittel:
+        st.rerun()
