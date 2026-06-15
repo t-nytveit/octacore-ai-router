@@ -85,15 +85,15 @@ if bg_base64:
         </style>
     """, unsafe_allow_html=True)
 
-# 5. Global CSS-styling (Nå med fjerning av Streamlits tvingende topp-padding i sidepanelet)
+# 5. Global CSS-styling for et strømlinjeformet grensesnitt
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
         background-color: rgba(15, 18, 23, 0.97) !important;
     }
-    /* Fjerner tomrommet og paddingen Streamlit lager automatisk øverst i sidebaren */
+    /* Nullstiller unødvendig luft i toppen av sidepanelet så logoen spretter opp */
     [data-testid="stSidebarUserContent"] {
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
     }
     [data-testid="stChatMessage"] {
         background-color: rgba(22, 27, 34, 0.65) !important;
@@ -218,12 +218,20 @@ if "current_chat_id" not in st.session_state:
 if "rename_id" not in st.session_state:
     st.session_state.rename_id = None
 
-# 9. INTEGRERT SIDEBAR (Nå med KUN den gylne logoen øverst, all tekst-overskrift er fjernet)
+# 9. INTEGRERT SIDEBAR (Tvinger logoen stabilt på topp med Base64-innbaking for å hindre element-hopping)
 with st.sidebar:
-    if os.path.exists(MAIN_LOGO_PATH):
-        st.image(MAIN_LOGO_PATH, use_container_width=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
+    logo_base64 = get_base64_image(MAIN_LOGO_PATH)
+    if logo_base64:
+        st.markdown(
+            f'<div style="text-align: center; margin-bottom: 15px;">'
+            f'<img src="data:image/jpeg;base64,{logo_base64}" style="width: 100%; max-width: 260px; height: auto;">'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.title("OctaCore AI")
+
+    st.markdown("---")
 
     if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
         st.session_state.current_chat_id = None
@@ -294,8 +302,7 @@ with st.sidebar:
         height=80
     )
 
-# 10. Hovedskjerm - 100 % ren og minimalistisk uten løs spøkelsestekst
-
+# 10. Hovedskjerm - Helt ren uten unødvendige titler eller gamle undertitler
 # 11. Hent aktiv samtalehistorikk
 active_id = st.session_state.current_chat_id
 if active_id and active_id in st.session_state.all_chats:
@@ -306,86 +313,3 @@ else:
 # 12. Rendring av historisk chat-logg med miniatyr-logo som avatar
 for message in messages:
     avatar_to_use = AVATAR_PATH if (message["role"] == "assistant" and os.path.exists(AVATAR_PATH)) else None
-    with st.chat_message(message["role"], avatar=avatar_to_use):
-        st.markdown(message["content"])
-        if message["role"] == "assistant" and "model" in message:
-            modell = message["model"]
-            css = "model-tag-gemini" if "Gemini" in modell else ("model-tag-openai" if "OpenAI" in modell else "model-tag-anthropic")
-            st.markdown(f'<div class="model-tag {css}">⚡ {modell}</div>', unsafe_allow_html=True)
-
-# 13. Bygg dynamisk systeminstruks
-def bygg_system_instruks():
-    instruks = DEFAULT_SYSTEM
-    if octa_persona == "Teknisk arkitekt / Seniorutvikler":
-        instruks += " Fokuser tungt på nøyaktig kode, arkitektur og beste praksis."
-    elif octa_persona == "Kreativ sparringspartner":
-        instruks += " Vær utforskende, kom med innovative ideer og drøft konseptene åpent og filosofisk."
-    if custom_instructions.strip():
-        instruks += f" Ekstra regel fra brukeren: {custom_instructions}"
-    return instruks
-
-# 14. Brukerinput og asynkron prosessering
-if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
-
-    tving_omstart_for_tittel = False
-    
-    # Håndtering av nyopprettede samtaler
-    if not active_id:
-        active_id = str(int(time.time()))
-        st.session_state.current_chat_id = active_id
-        clean_title = user_prompt.strip()[:28] + "…" if len(user_prompt.strip()) > 28 else user_prompt.strip()
-        st.session_state.all_chats[active_id] = {"title": clean_title or "Ny samtale", "messages": []}
-        messages = st.session_state.all_chats[active_id]["messages"]
-        tving_omstart_for_tittel = True
-
-    with st.chat_message("user"):
-        st.markdown(user_prompt)
-    messages.append({"role": "user", "content": user_prompt})
-
-    final_system = bygg_system_instruks()
-    meldingsliste = bygg_meldingsliste(messages[:-1], user_prompt)
-
-    # Ruter-rekkefølge basert på innhold
-    er_teknisk = "kode" in user_prompt.lower() or "arkitektur" in user_prompt.lower() or octa_persona == "Teknisk arkitekt / Seniorutvikler"
-    if er_teknisk:
-        rekkefølge = [
-            ("OpenAI (gpt-4o-mini)", stream_openai),
-            ("Anthropic (claude-sonnet-4-6)", stream_anthropic),
-            ("Google Gemini (gemini-2.5-flash)", stream_gemini),
-        ]
-    else:
-        rekkefølge = [
-            ("Google Gemini (gemini-2.5-flash)", stream_gemini),
-            ("OpenAI (gpt-4o-mini)", stream_openai),
-            ("Anthropic (claude-sonnet-4-6)", stream_anthropic),
-        ]
-
-    # Viser miniatyr-logoen som avatar under genereringen live
-    avatar_to_use = AVATAR_PATH if os.path.exists(AVATAR_PATH) else None
-    with st.chat_message("assistant", avatar=avatar_to_use):
-        svar_endelig = None
-        brukt_modell = None
-
-        for modell_navn, stream_fn in rekkefølge:
-            try:
-                svar_endelig = st.write_stream(stream_fn(meldingsliste, final_system))
-                brukt_modell = modell_navn
-                break
-            except Exception:
-                continue
-
-        if not svar_endelig:
-            svar_endelig = "Jeg opplevde en midlertidig forstyrrelse i tankerekken min. Kan du gjenta det?"
-            brukt_modell = "ukjent"
-            st.markdown(svar_endelig)
-
-        if brukt_modell:
-            css = "model-tag-gemini" if "Gemini" in brukt_modell else ("model-tag-openai" if "OpenAI" in brukt_modell else "model-tag-anthropic")
-            st.markdown(f'<div class="model-tag {css}">⚡ {brukt_modell}</div>', unsafe_allow_html=True)
-
-    # Lagre og persister data permanent
-    messages.append({"role": "assistant", "content": svar_endelig, "model": brukt_modell or "ukjent"})
-    lagre_historikk(st.session_state.all_chats)
-    
-    if tving_omstart_for_tittel:
-        st.rerun()
