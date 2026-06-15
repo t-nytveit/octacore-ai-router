@@ -67,10 +67,25 @@ if bg_base64:
             margin-bottom: 10px;
             backdrop-filter: blur(10px);
         }}
+        /* Styling for samtale-knappene i sidepanelet */
+        .stSidebar .stButton>button {{
+            width: 100% !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            background-color: transparent !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #c9d1d9 !important;
+            margin-bottom: 5px !important;
+        }}
+        .stSidebar .stButton>button:hover {{
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            color: #ffffff !important;
+        }}
         </style>
     """, unsafe_allow_html=True)
 
-# EN SPLITTER NY, REFLEKTERT OG MENNESKELIG SYSTEMINSTRUKS (v4.0)
+# Menneskelig Systeminstruks (v4.1)
 DEFAULT_SYSTEM = (
     "Du er OctaCore AI, en eksklusiv, dypt intelligent og varm AI-assistent utviklet av OctaCore. "
     "Svarene dine skal ALDRI oppleves som enkle, mekaniske robotsvar. "
@@ -81,7 +96,7 @@ DEFAULT_SYSTEM = (
     "med den levende og emosjonelt intelligente personligheten til Gemini."
 )
 
-# 4. --- API-KALLETS HJELPEFUNKSJONER (Med innlagt temperatur på 0.7) ---
+# 4. --- API-KALLETS HJELPEFUNKSJONER ---
 def prøv_openai(prompt, system_instruks):
     if not client_openai:
         raise Exception("OpenAI ikke klar.")
@@ -92,7 +107,7 @@ def prøv_openai(prompt, system_instruks):
     response = client_openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=meldinger,
-        temperature=0.7 # Gir mer naturlig og reflektert variasjon i språket
+        temperature=0.7
     )
     return response.choices[0].message.content
 
@@ -104,7 +119,7 @@ def prøv_gemini(prompt, system_instruks):
         contents=prompt,
         config={
             "system_instruction": system_instruks,
-            "temperature": 0.7 # Skrur opp kreativitet og flyt hos Gemini
+            "temperature": 0.7
         }
     )
     return response.text
@@ -114,9 +129,9 @@ def prøv_anthropic(prompt, system_instruks):
         raise Exception("Anthropic ikke klar.")
     kwargs = {
         "model": "claude-sonnet-4-6",
-        "max_tokens": 1500, # Økt litt så den har plass til å reflektere dypere
+        "max_tokens": 1500,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7 # Gir Claude den menneskelige finessen
+        "temperature": 0.7
     }
     if system_instruks:
         kwargs["system"] = system_instruks
@@ -124,7 +139,15 @@ def prøv_anthropic(prompt, system_instruks):
     return response.content[0].text
 
 
-# 5. --- SIDEBAR: CONFIG ---
+# 5. --- INITIALISER STATE FOR HISTORIKK OG FLERE SAMTALER ---
+if "all_chats" not in st.session_state:
+    st.session_state.all_chats = {}  # Format: {chat_id: {"title": tittel, "messages": [meldinger]}}
+
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
+
+
+# 6. --- SIDEBAR: LOGO, NY SAMTALE & HISTORIKK ---
 with st.sidebar:
     if os.path.exists("OctaCore_logo_transparent_white_text.jpg"):
         st.image("OctaCore_logo_transparent_white_text.jpg", use_container_width=True)
@@ -132,7 +155,28 @@ with st.sidebar:
         st.title("OctaCore AI")
         
     st.markdown("---")
-    st.subheader("💎 Konfigurer din Octa")
+    
+    # KNAPP: Start ny samtale
+    if st.button("➕ Start ny samtale", type="primary", use_container_width=True):
+        st.session_state.current_chat_id = None
+        st.rerun()
+        
+    st.markdown("<br><b>🗂️ Dine lagrede samtaler:</b>", unsafe_allow_html=True)
+    
+    # VIS HISTORIKK: Liste ut alle lagrede samtaler automatisk
+    if not st.session_state.all_chats:
+        st.caption("Ingen lagrede samtaler ennå.")
+    else:
+        for chat_id in sorted(st.session_state.all_chats.keys(), reverse=True):
+            title = st.session_state.all_chats[chat_id]["title"]
+            # Hvis dette er aktiv tråd, legg på en markering
+            label = f"💬 {title}" if chat_id != st.session_state.current_chat_id else f"👉 💬 {title}"
+            if st.button(label, key=f"btn_{chat_id}"):
+                st.session_state.current_chat_id = chat_id
+                st.rerun()
+
+    st.markdown("---")
+    st.subheader("⚙️ Innstillinger")
     
     octa_name = st.text_input("Gi din Octa et navn:", value="OctaCore Core")
     octa_persona = st.selectbox(
@@ -142,39 +186,50 @@ with st.sidebar:
     
     custom_instructions = st.text_area(
         "Personlige instrukser for denne Octaen:",
-        placeholder="F.eks. 'Snakk til meg som en coach', 'Bruk eksempler i svarene'...",
-        height=100
+        placeholder="F.eks. 'Hjelp meg å organisere hverdagen'...",
+        height=80
     )
-    
-    st.markdown("---")
-    if st.button("Tøm samtalehistorikk 🗑️", type="secondary"):
-        st.session_state.messages = []
-        st.rerun()
 
 
-# 6. --- HOVEDSKJERM BANNER ---
+# 7. --- HOVEDSKJERM BANNER ---
 if os.path.exists("OctaCore_ Elegant design og teknologi.png"):
     st.image("OctaCore_ Elegant design og teknologi.png", use_container_width=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 
-# 7. --- INITIALISER SAMTALEHISTORIKK ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# 8. --- HENT ELLER OPPRETT AKTIV SAMTALE ---
+active_id = st.session_state.current_chat_id
+if active_id and active_id in st.session_state.all_chats:
+    messages = st.session_state.all_chats[active_id]["messages"]
+else:
+    messages = []
 
-for message in st.session_state.messages:
+
+# 9. --- VIS CHAT-LOGGEN FOR AKTIV TRÅD ---
+for message in messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 
-# 8. --- CHAT-INPUT ---
+# 10. --- INPUT-HÅNDTERING OG AUTOMATISK LAGRING ---
 if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     
+    # Hvis dette er en helt ny tråd, generer en ny ID og opprett datastrukturen
+    if not active_id:
+        import time
+        active_id = str(int(time.time()))
+        st.session_state.current_chat_id = active_id
+        
+        # Lag en kjapp, ren tittel basert på de første 25 tegnene av prompten
+        clean_title = user_prompt.strip()[:25] + "..." if len(user_prompt.strip()) > 25 else user_prompt.strip()
+        st.session_state.all_chats[active_id] = {"title": clean_title, "messages": []}
+        messages = st.session_state.all_chats[active_id]["messages"]
+    
+    # Vis og lagre brukerens melding
     with st.chat_message("user"):
         st.markdown(user_prompt)
-    
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    messages.append({"role": "user", "content": user_prompt})
 
     # Forbered systeminstruksen
     final_system_instruction = DEFAULT_SYSTEM
@@ -186,17 +241,17 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
     if custom_instructions.strip():
         final_system_instruction += f" Ekstra viktig regel fra brukeren: {custom_instructions}"
 
+    # Generer og vis svaret
     with st.chat_message("assistant"):
         with st.spinner(f"{octa_name} reflekterer..."):
             svar_endelig = None
             
-            # Smart ruting-rekkefølge
+            # Smart ruting
             if "kode" in user_prompt.lower() or "arkitektur" in user_prompt.lower() or octa_persona == "Teknisk arkitekt / Seniorutvikler":
                 rekkefølge = [("OpenAI", prøv_openai), ("Anthropic Claude", prøv_anthropic), ("Google Gemini", prøv_gemini)]
             else:
                 rekkefølge = [("Google Gemini", prøv_gemini), ("OpenAI", prøv_openai), ("Anthropic Claude", prøv_anthropic)]
 
-            # Prøv motorene
             for navn, motor_funksjon in rekkefølge:
                 try:
                     svar_endelig = motor_funksjon(user_prompt, final_system_instruction)
@@ -206,7 +261,11 @@ if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
                     continue
 
             if not svar_endelig:
-                svar_endelig = "Jeg opplever en midlertidig forstyrrelse i tankerekken min på grunn av høy trafikk på ruter-nodene. Kan du gjenta det?"
+                svar_endelig = "Jeg opplevede en midlertidig forstyrrelse i tankerekken min. Kan du gjenta det?"
 
             st.markdown(svar_endelig)
-            st.session_state.messages.append({"role": "assistant", "content": svar_endelig})
+            # Lagre assistentens svar i riktig tråd
+            messages.append({"role": "assistant", "content": svar_endelig})
+            
+            # Tving Streamlit til å oppdatere sidepanelet så den nye samtalen vises med en gang
+            st.rerun()
