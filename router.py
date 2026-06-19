@@ -75,17 +75,19 @@ def get_base64_image(image_path):
 bg_base64 = get_base64_image("Svart lædertekstur med uendelighetssymboler.png")
 
 if bg_base64:
+    # Flyttet bakgrunnen til .stMain og body for å hindre at chat-input skyves ut av vinduet
     st.markdown(f"""
         <style>
-        [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
-            background-image: url('data:image/png;base64,{bg_base64}');
-            background-size: cover;
-            background-attachment: fixed;
+        .stMain, body, [data-testid="stHeader"] {{
+            background-image: url('data:image/png;base64,{bg_base64}') !important;
+            background-size: cover !important;
+            background-attachment: fixed !important;
+            background-position: center !important;
         }}
         </style>
     """, unsafe_allow_html=True)
 
-# 5. Global CSS-styling for et strømlinjeformet grensesnitt (OPPDATERT FOR TEKSTKONTRAST)
+# 5. Global CSS-styling for et strømlinjeformet grensesnitt med optimal kontrast
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
@@ -99,9 +101,9 @@ st.markdown("""
         padding-top: 0.5rem !important;
     }
     
-    /* --- CHAT-BOBLER OG TEKSTKONTRAST --- */
+    /* --- CHAT-BOBLER OMRÅDE --- */
     [data-testid="stChatMessage"] {
-        background-color: rgba(22, 27, 34, 0.8) !important; /* Ørlite mørkere bakgrunn for dybde */
+        background-color: rgba(22, 27, 34, 0.85) !important; /* Gjort mer solid for maksimal kontrast */
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
         margin-bottom: 10px;
@@ -177,7 +179,7 @@ DEFAULT_SYSTEM = (
     "Du skal ALDRI svare i form av stive, upersonlige rapporter eller generiske 'IT-konsulent'-evalueringer. "
     "Unngå unaturlig opplisting og standardiserte fraser som 'Styrker i koden' eller 'Mulige forbedringer' med mindre du blir eksplisitt bedt om en formell rapport. "
     "Snakk i stedet som en levende, skarp og engasjert samtalepartner og teknologipartner. "
-    "Når du diskuterer kode, oppgaver eller konsepter, skal du drøfte, reflektere, bruke et flytende hverdagsuttrykk "
+    "Når du diskuterer kode, oppgaver eller konsepter, skal du drøfte, reflectere, bruke et flytende hverdagsuttrykk "
     "og ha en naturlig dialog på feilfri norsk. Vis personlighet, dybde og situasjonsforståelse. "
     "Kombiner den intellektuelle tyngden til ChatGPT med den varme, flytende og emosjonelt intelligente sjelen til Gemini."
 )
@@ -339,3 +341,13 @@ with st.sidebar:
                     if st.button("✏️", key=f"ren_{chat_id}", help="Gi ny tittel"):
                         st.session_state.rename_id = chat_id
                         st.rerun()
+                with col_del:
+                    if st.button("🗑", key=f"del_{chat_id}", help="Slett denne samtalen"):
+                        del st.session_state.all_chats[chat_id]
+                        if st.session_state.current_chat_id == chat_id:
+                            st.session_state.current_chat_id = None
+                        lagre_historikk(st.session_state.all_chats)
+                        st.rerun()
+
+    st.markdown("---")
+    if
