@@ -4,10 +4,10 @@ import base64
 import time
 import json
 
-# 1. Sidetittel, layout og miniatyrlogo
+# 1. Sidetittel, layout og logoer
 AVATAR_PATH = "OctaCore_icon.png"
 MAIN_LOGO_PATH = "OctaCore_logo_transparent_white_text.png"
-HERO_LOGO_PATH = "OctaCore_ Elegant design og teknologi.png"
+HERO_LOGO_PATH = "OctaCore_logo_transparent_white_text.png"
 BG_PATH = "Svart lædertekstur med uendelighetssymboler.png"
 
 st.set_page_config(
@@ -21,7 +21,6 @@ HISTORY_FILE = "octacore_chat_history.json"
 MAX_CONTEXT_MESSAGES = 20
 
 
-# 2. Hjelpefunksjoner
 def last_inn_historikk():
     if os.path.exists(HISTORY_FILE):
         try:
@@ -47,7 +46,7 @@ def get_base64_image(image_path):
     return None
 
 
-# 3. API-nøkler
+# 2. API-nøkler
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY")
@@ -78,7 +77,7 @@ if ANTHROPIC_API_KEY:
         pass
 
 
-# 4. Bakgrunn
+# 3. Bakgrunn
 bg_base64 = get_base64_image(BG_PATH)
 
 if bg_base64:
@@ -86,7 +85,7 @@ if bg_base64:
         <style>
         .stApp {{
             background-image:
-                linear-gradient(rgba(5, 7, 12, 0.60), rgba(5, 7, 12, 0.82)),
+                linear-gradient(rgba(5, 7, 12, 0.58), rgba(5, 7, 12, 0.84)),
                 url('data:image/png;base64,{bg_base64}');
             background-size: cover;
             background-attachment: fixed;
@@ -101,7 +100,7 @@ if bg_base64:
     """, unsafe_allow_html=True)
 
 
-# 5. Premium CSS
+# 4. Premium CSS
 st.markdown("""
 <style>
 .block-container {
@@ -125,25 +124,27 @@ st.markdown("""
 
 .octa-hero {
     margin: 0 auto 2rem auto;
-    padding: 2.2rem 2rem 1.7rem 2rem;
+    padding: 2.4rem 2rem 1.8rem 2rem;
     text-align: center;
     border-radius: 30px;
-    background: linear-gradient(145deg, rgba(10, 13, 20, 0.88), rgba(29, 32, 42, 0.62));
-    border: 1px solid rgba(255, 215, 120, 0.20);
+    background: linear-gradient(145deg, rgba(10, 13, 20, 0.72), rgba(29, 32, 42, 0.42));
+    border: 1px solid rgba(255, 215, 120, 0.18);
     box-shadow:
-        0 0 60px rgba(255, 196, 64, 0.08),
-        0 20px 60px rgba(0, 0, 0, 0.40),
-        inset 0 0 40px rgba(255, 255, 255, 0.035);
+        0 0 60px rgba(255, 196, 64, 0.07),
+        0 20px 60px rgba(0, 0, 0, 0.36),
+        inset 0 0 40px rgba(255, 255, 255, 0.028);
     backdrop-filter: blur(18px);
 }
 
 .octa-hero-logo {
-    width: min(440px, 86%);
-    filter: drop-shadow(0 0 28px rgba(255, 196, 64, 0.24));
+    width: min(520px, 90%);
+    filter:
+        drop-shadow(0 0 18px rgba(255,196,64,0.20))
+        drop-shadow(0 0 40px rgba(255,196,64,0.12));
 }
 
 .octa-subtitle {
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
     color: rgba(255,255,255,0.72);
     font-size: 1rem;
     letter-spacing: 0.02em;
@@ -164,7 +165,6 @@ st.markdown("""
     border: 1px solid rgba(255,255,255,0.11);
     color: rgba(255,255,255,0.84);
     font-size: 0.78rem;
-    box-shadow: inset 0 0 16px rgba(255,255,255,0.025);
 }
 
 [data-testid="stChatMessage"] {
@@ -208,7 +208,6 @@ st.markdown("""
     font-size: 0.74rem;
     font-weight: 600;
     font-style: normal !important;
-    letter-spacing: 0.01em;
 }
 
 .model-tag-gemini { color: #7db7ff !important; }
@@ -267,9 +266,9 @@ div[data-baseweb="select"] {
 """, unsafe_allow_html=True)
 
 
-# 6. Hero
+# 5. Hero-seksjon med transparent logo
 def render_hero():
-    logo_base64 = get_base64_image(HERO_LOGO_PATH) or get_base64_image(MAIN_LOGO_PATH)
+    logo_base64 = get_base64_image(HERO_LOGO_PATH)
 
     if logo_base64:
         st.markdown(f"""
@@ -288,7 +287,7 @@ def render_hero():
         """, unsafe_allow_html=True)
 
 
-# 7. Systeminstruks
+# 6. Systeminstruks
 DEFAULT_SYSTEM = (
     "Du er OctaCore AI, en eksklusiv, dypt reflektert og menneskelig AI-partner utviklet av OctaCore. "
     "Du skal ALDRI svare i form av stive, upersonlige rapporter eller generiske 'IT-konsulent'-evalueringer. "
@@ -300,7 +299,6 @@ DEFAULT_SYSTEM = (
 )
 
 
-# 8. Kontekst og streaming
 def bygg_meldingsliste(messages, ny_prompt):
     historikk = messages[-(MAX_CONTEXT_MESSAGES - 1):] if len(messages) > MAX_CONTEXT_MESSAGES else messages[:]
     alle = [{"role": m["role"], "content": m["content"]} for m in historikk]
@@ -373,7 +371,6 @@ def stream_anthropic(meldinger, system_instruks):
             yield text
 
 
-# 9. Smart modellruter
 def velg_modellrekkefolge(prompt, persona):
     tekst = prompt.lower()
 
@@ -411,7 +408,7 @@ def velg_modellrekkefolge(prompt, persona):
     ]
 
 
-# 10. Session state
+# 7. Session state
 if "all_chats" not in st.session_state:
     st.session_state.all_chats = last_inn_historikk()
 
@@ -422,7 +419,7 @@ if "rename_id" not in st.session_state:
     st.session_state.rename_id = None
 
 
-# 11. Sidebar
+# 8. Sidebar
 with st.sidebar:
     if os.path.exists(MAIN_LOGO_PATH):
         st.image(MAIN_LOGO_PATH, use_container_width=True)
@@ -520,7 +517,7 @@ with st.sidebar:
     feil_logg_container = st.container()
 
 
-# 12. Aktiv samtale
+# 9. Aktiv samtale
 active_id = st.session_state.current_chat_id
 
 if active_id and active_id in st.session_state.all_chats:
@@ -529,12 +526,12 @@ else:
     messages = []
 
 
-# 13. Vis hero hvis ingen meldinger
+# 10. Hero vises bare på tom samtale
 if not messages:
     render_hero()
 
 
-# 14. Vis historisk chat
+# 11. Vis historisk chat
 for message in messages:
     avatar_to_use = AVATAR_PATH if (message["role"] == "assistant" and os.path.exists(AVATAR_PATH)) else None
 
@@ -552,7 +549,6 @@ for message in messages:
             )
 
 
-# 15. Dynamisk systeminstruks
 def bygg_system_instruks():
     instruks = DEFAULT_SYSTEM
 
@@ -568,7 +564,7 @@ def bygg_system_instruks():
     return instruks
 
 
-# 16. Chat-input og respons
+# 12. Chat-input og respons
 if user_prompt := st.chat_input(f"Snakk med {octa_name}..."):
 
     tving_omstart_for_tittel = False
